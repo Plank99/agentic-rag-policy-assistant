@@ -1,0 +1,111 @@
+[
+  {
+    "id": "q1",
+    "type": "policy_question",
+    "query": "What are the password and MFA requirements for corporate accounts?",
+    "expected_keywords": ["12 characters", "multi-factor", "MFA"],
+    "expected_source": "it_security_policy.md"
+  },
+  {
+    "id": "q2",
+    "type": "policy_question",
+    "query": "How many PTO days can I carry over into next year?",
+    "expected_keywords": ["5", "carryover"],
+    "expected_source": "pto_policy.md"
+  },
+  {
+    "id": "q3",
+    "type": "policy_question",
+    "query": "How many days per week am I allowed to work remotely?",
+    "expected_keywords": ["3 days"],
+    "expected_source": "remote_work_policy.md"
+  },
+  {
+    "id": "q4",
+    "type": "policy_question",
+    "query": "Above what amount do I need a receipt for an expense?",
+    "expected_keywords": ["25 EUR"],
+    "expected_source": "expense_reimbursement_policy.md"
+  },
+  {
+    "id": "q5",
+    "type": "policy_question",
+    "query": "Under GDPR, how quickly must the company respond to a data subject access request?",
+    "expected_keywords": ["30 calendar days", "30 days"],
+    "expected_source": "data_protection_policy.md"
+  },
+  {
+    "id": "q6",
+    "type": "policy_question",
+    "query": "What is the maximum value of a business gift I can accept according to the Code of Conduct?",
+    "expected_keywords": ["75 EUR"],
+    "expected_source": "code_of_conduct.md"
+  },
+  {
+    "id": "q7",
+    "type": "leave_balance",
+    "query": "I was hired on 2022-01-01 and have taken 5 PTO days this year. How many days do I have left as of 2024-01-01?",
+    "calc_args": {"hire_date": "2022-01-01", "days_taken": 5, "as_of_date": "2024-01-01"},
+    "expected_remaining_days": 37.0
+  },
+  {
+    "id": "q8",
+    "type": "leave_balance",
+    "query": "My hire date is 2023-06-15 and I haven't taken any PTO yet. What's my balance as of 2023-12-15?",
+    "calc_args": {"hire_date": "2023-06-15", "days_taken": 0, "as_of_date": "2023-12-15"},
+    "expected_remaining_days": 10.5
+  },
+  {
+    "id": "q9",
+    "type": "leave_balance",
+    "query": "Hired 2020-02-01, took 20 PTO days already, what's my remaining balance as of 2020-08-01?",
+    "calc_args": {"hire_date": "2020-02-01", "days_taken": 20, "as_of_date": "2020-08-01"},
+    "expected_remaining_days": -9.5
+  },
+  {
+    "id": "q10",
+    "type": "create_ticket",
+    "query": "I lost my company laptop while traveling, please open a ticket for IT.",
+    "expected_category": "it_equipment_request"
+  },
+  {
+    "id": "q11",
+    "type": "create_ticket",
+    "query": "I'd like to confidentially report a harassment concern about a coworker.",
+    "expected_category": "hr_conduct_concern"
+  },
+  {
+    "id": "q12",
+    "type": "create_ticket",
+    "query": "I lost the receipt for a 150 EUR client dinner, please file an expense dispute ticket.",
+    "expected_category": "finance_expense_dispute"
+  },
+  {
+    "id": "q13",
+    "type": "compound",
+    "query": "What's the PTO carryover limit, and separately, I was hired on 2023-01-01 with 2 days taken - how many do I have left as of 2023-07-01?",
+    "expected_keywords": ["5", "carryover"],
+    "calc_args": {"hire_date": "2023-01-01", "days_taken": 2, "as_of_date": "2023-07-01"},
+    "expected_remaining_days": 8.5
+  },
+  {
+    "id": "q14",
+    "type": "compound",
+    "query": "How do I report a security incident, and also please open a ticket requesting VPN access for a new contractor.",
+    "expected_keywords": ["1 hour"],
+    "expected_category": "it_access_request"
+  },
+  {
+    "id": "q15",
+    "type": "out_of_scope",
+    "query": "What's the weather like today?"
+  },
+  {
+    "id": "q16",
+    "type": "policy_question",
+    "query": "What's the overnight cap for that trip thing in the big cities?",
+    "expected_keywords": ["200 EUR"],
+    "expected_source": "expense_reimbursement_policy.md",
+    "note": "Deliberately ambiguous phrasing ('that trip thing') to exercise the RAG subgraph's query-rewrite self-correction loop."
+  }
+]
