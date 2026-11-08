@@ -2,28 +2,27 @@
 
 - Queries: 150
 - Workers: 1
-- Wall clock: 1565.6s
+- Wall clock: 362.5s
 
 ## Overall latency (ms)
 
 | mean | p50 | p90 | p99 | max |
 |---|---|---|---|---|
-| 10437.3 | 9562.4 | 15241.9 | 23827.7 | 25392.5 |
+| 2416.9 | 2222.2 | 3581.6 | 4180.4 | 4444.1 |
 
 ## Per-node latency (ms)
 
 | node | n | mean | p50 | p90 | share of total |
 |---|---|---|---|---|---|
 | calculate_leave | 38 | 0.0 | 0.0 | 0.0 | 0.0% |
-| classify_intent | 150 | 2770.9 | 3104.2 | 3711.1 | 22.2% |
-| create_ticket | 45 | 15.8 | 12.5 | 23.2 | 0.0% |
-| direct_response | 7 | 3834.6 | 3886.6 | 4336.1 | 1.4% |
-| rag.generate_answer | 83 | 1795.7 | 1181.6 | 4798.3 | 7.9% |
-| rag.grade_relevance | 113 | 654.4 | 394.7 | 436.2 | 3.9% |
-| rag.retrieve | 113 | 9.9 | 9.0 | 11.7 | 0.1% |
-| rag.rewrite_query | 30 | 2860.6 | 3064.8 | 3358.4 | 4.6% |
-| rag_answer | 83 | 3736.7 | 1672.4 | 6860.0 | 16.5% |
-| synthesize_response | 143 | 5677.7 | 5551.1 | 8711.7 | 43.3% |
+| classify_intent | 150 | 704.6 | 568.2 | 981.9 | 22.9% |
+| create_ticket | 30 | 11.6 | 11.1 | 13.0 | 0.1% |
+| direct_response | 7 | 916.7 | 927.1 | 945.5 | 1.4% |
+| rag.generate_answer | 83 | 857.7 | 688.7 | 1556.8 | 15.4% |
+| rag.grade_relevance | 83 | 336.7 | 334.8 | 365.8 | 6.0% |
+| rag.retrieve | 83 | 8.5 | 8.1 | 10.1 | 0.2% |
+| rag_answer | 83 | 1205.0 | 1028.6 | 1895.1 | 21.6% |
+| synthesize_response | 143 | 1047.1 | 1022.6 | 1614.2 | 32.4% |
 
 **Identified bottleneck node:** `synthesize_response`
 

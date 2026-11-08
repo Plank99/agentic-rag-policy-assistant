@@ -118,7 +118,7 @@ Equipment/BYOD, Travel. The emphasis is on quality of processing:
 
 | Component | Choice | Rationale |
 |---|---|---|
-| LLM | **Ollama, `llama3.2:3b`** (configurable via `OLLAMA_MODEL` env var) | No paid API. A 3B model runs at acceptable speed even on a laptop CPU, which is enough for the demo. Trade-off: a smaller model is less reliable at following a strict JSON format and weaker at multi-step reasoning → so `app/llm.py` defensively parses the JSON response (extracts the first `{...}` block via regex, falls back to a sensible default on a missing/invalid field), and the prompts give explicit, few-step instructions. A larger model (e.g. `qwen2.5:14b`) would give better quality, but is significantly slower on CPU; worth switching if a GPU is available. |
+| LLM | **Ollama runtime + `qwen2.5:14b`** (configurable via `OLLAMA_MODEL` env var) | No paid API; Ollama is just the local model server, so the actual model can be swapped via env var at any time, with no code change. The project originally started with `llama3.2:3b` (smaller, fast even on CPU), then switched to `qwen2.5:14b` once a GPU became available (RTX 5070 Ti, 16 GB VRAM) — see the `deploy.resources.reservations.devices` (NVIDIA GPU) block on the `ollama` service in `docker-compose.yml`. **The real functional eval and load test were run against both models** (see sections 5-6) — the GPU-backed Qwen gave not only better quality but also roughly a **4.3× latency improvement**. The trade-off that persisted across both models: smaller/mid-size LLMs are less reliable at strictly following a JSON format → so `app/llm.py` defensively parses the JSON response (extracts the first `{...}` block via regex, falls back to a sensible default on any missing/invalid field). |
 | Embedding | **`sentence-transformers/all-MiniLM-L6-v2`** (local, runs on CPU) | Small (~90 MB), fast, no API key, good enough retrieval quality for a corpus of this size. |
 | Vectorstore | **FAISS** (in-process, persisted to disk) | No separate infrastructure needed for a prototype; see the 2.4 scalability note. |
 
@@ -129,23 +129,26 @@ Equipment/BYOD, Travel. The emphasis is on quality of processing:
 ```bash
 cp .env.example .env   # optional, defaults also work
 docker compose up --build -d
-docker exec policy-assistant-ollama ollama pull llama3.2:3b   # required on first startup
+docker exec policy-assistant-ollama ollama pull qwen2.5:14b   # required on first startup
 ```
 
 The UI is then available at `http://localhost:8501`. `docker-compose.yml` starts two
 services: `ollama` (model server, with a persistent volume) and `app` (the Streamlit UI,
 which reaches it via `OLLAMA_BASE_URL=http://ollama:11434`).
 
-> **Note:** even `llama3.2:3b` can be slow on a CPU-only host (see the load test results
-> below) – if a GPU-backed Ollama host is available, point `OLLAMA_BASE_URL` at it, or choose
-> a smaller model (`llama3.2:1b`).
+> **GPU:** the `ollama` service requests an NVIDIA GPU in `docker-compose.yml` under
+> `deploy.resources.reservations.devices` (`driver: nvidia`, `capabilities: [gpu]`) — this
+> requires an NVIDIA driver + `nvidia-container-toolkit` (or Docker Desktop GPU support) on
+> the host. If no GPU is available, delete this block and pick a smaller model (e.g.
+> `llama3.2:3b` or `llama3.2:1b`) in `OLLAMA_MODEL` — it also works on CPU, just slower (see
+> section 6).
 
 ### 4.2 Running locally (venv)
 
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # Windows; Linux/Mac: .venv/bin/activate
 pip install -r requirements.txt
-ollama pull llama3.2:3b     # requires a separately installed Ollama: https://ollama.com
+ollama pull qwen2.5:14b     # requires a separately installed Ollama: https://ollama.com
 streamlit run ui/streamlit_app.py
 ```
 
@@ -215,6 +218,45 @@ can sometimes produce a false negative on a functionally correct answer. In a pr
 version it would be worth adding a second, LLM-based "judge" step for the keyword/category
 questions.
 
+### 5.1 Model switch: `llama3.2:3b` (CPU) → `qwen2.5:14b` (GPU, RTX 5070 Ti)
+
+Once a GPU became available, we added an NVIDIA GPU reservation to the `docker-compose.yml`
+`ollama` service and switched to `qwen2.5:14b`. The same 16 questions were run against it
+too, with unchanged eval logic. The original `llama3.2:3b` reports are archived under
+`eval/results/llama3.2-3b/`.
+
+**Real result (`qwen2.5:14b`, GPU, 2026-11-09): 12/16 (75.0%).**
+
+| | llama3.2:3b (CPU) | qwen2.5:14b (GPU) |
+|---|---|---|
+| Accuracy | 11/16 (68.8%) | 12/16 (75.0%) |
+| classify_intent avg | 2860.0 ms | 3568.5 ms (one outlier cold-start call of 45.4s skews this up; the rest are ~0.5-1s) |
+| rag.generate_answer avg | 3911.9 ms | 889.8 ms |
+| synthesize_response avg | 6640.2 ms | 1111.0 ms |
+| rag_answer avg | 10030.0 ms | 1423.5 ms |
+
+Two substantive, real differences emerged from the model switch (not just the raw score):
+
+- **Improved:** `llama3.2:3b` failed q5 (didn't reproduce the GDPR "30 calendar days" fact
+  exactly); `qwen2.5:14b` answered it correctly.
+- **New regression we found and fixed:** on its first run, `qwen2.5:14b` **classified**
+  `"What's the weather like today?"` (q15, `out_of_scope`) **as `policy_question`**
+  (`_classify_intent`), running a full RAG round-trip on it (retrieve → grade → rewrite →
+  retrieve → grade → generate) before arriving at a final answer that was, in fact, still
+  reasonable — so it didn't give a wrong answer, but it bypassed the intended
+  `direct_response` short-circuit routing, "spending" 2 extra LLM calls on it. This is a nice
+  demonstration of the general phenomenon that **different models interpret the same prompt
+  differently** — up to that point, `_CLASSIFY_PROMPT` only had a positive description (when
+  a task SHOULD be assigned) and a negative description (small talk → empty list), with no
+  concrete negative *example*. We added an explicit negative example (`{"tasks": []}` for the
+  "weather"/"tell me a joke" pattern) — re-run, q15 correctly routed to `direct_response`
+  again, and this is what produced the 11/16 → 12/16 jump.
+
+**Lesson:** when switching models (even with the same prompt set), it's worth re-running the
+full eval suite, because the failure profile — not just the final score — can differ from
+model to model; a prompt that worked reliably with one model can surface a new, previously
+unseen routing bug with another.
+
 ## 6. Load test
 
 ```bash
@@ -257,7 +299,7 @@ expensive, but the single, large-context call that stitches all sub-results toge
 end. `retrieve` (FAISS) and the deterministic tools (`calculate_leave`, `create_ticket`) are,
 as expected, negligible in cost (a couple of milliseconds).
 
-**Two concrete optimization suggestions:**
+**Two concrete optimization suggestions (originally):**
 1. **Collapse LLM round-trips.** `grade_relevance` + `rewrite_query` can be merged into a
    single structured-output call (`{"relevant": bool, "rewritten_query": "..."}`), and
    `grade_relevance` can be skipped entirely when the top FAISS similarity score already
@@ -268,31 +310,66 @@ as expected, negligible in cost (a couple of milliseconds).
    needs more than one Ollama replica or a GPU, since a single local Ollama process
    serializes requests regardless of how many client threads call it.
 
+### 6.1 Validating suggestion #2: re-measured result with a GPU (`qwen2.5:14b`, RTX 5070 Ti)
+
+We actually tested the suggestion above ("a GPU is needed for real load") on the GPU
+available to the user — the same 150 generated queries, the same `load_test.py`, just with
+the `docker-compose.yml` `ollama` service now running with a GPU reservation and serving
+`qwen2.5:14b`. The `llama3.2:3b`/CPU report is archived at
+`eval/results/llama3.2-3b/load_test_report.md`.
+
+| | llama3.2:3b (CPU) | qwen2.5:14b (GPU) | improvement |
+|---|---|---|---|
+| Wall clock (150 queries) | 1565.6s (≈26 min) | 362.5s (≈6 min) | **≈4.3×** |
+| mean | 10437.3 ms | 2416.9 ms | ≈4.3× |
+| p50 | 9562.4 ms | 2222.2 ms | ≈4.3× |
+| p90 | 15241.9 ms | 3581.6 ms | ≈4.3× |
+| p99 | 23827.7 ms | 4180.4 ms | ≈5.7× |
+| synthesize_response mean | 5677.7 ms | 1047.1 ms | ≈5.4× |
+| Bottleneck node | `synthesize_response` (43.3%) | `synthesize_response` (32.4%) | smaller as a share, but still the most expensive node in absolute terms |
+
+The bottleneck node **did not change** (`synthesize_response` remained the most expensive
+step on both models), but its absolute cost dropped to roughly a fifth — this confirms that,
+as originally hypothesized, the synchronous LLM round-trips dominate, and that switching to
+a GPU improves this evenly, proportionally across every node, not just one or two steps.
+Suggestion #1 (collapsing `grade_relevance`+`rewrite_query`) remains just as relevant
+alongside this — the GPU reduces the *per-call* cost, but not the *number of calls*, and in
+this load test there wasn't a single `rag.rewrite_query` call at all (Qwen found a relevant
+document on the first try every time), which is itself an indirect, measurable effect of the
+better model quality.
+
 ## 7. What I actually tested
 
-This sandbox did not have Docker or a local Ollama model available while the graph/RAG/tool
-logic was first being built, so the structure was initially validated with deterministic
-stub-LLM tests. Once the user brought up the Docker Compose stack, the system was tested
-live against a real Ollama-backed model (`llama3.2:3b`). What actually ran:
+The project was built in two phases: the graph/RAG/tool logic was first built in a sandbox
+with no Docker/Ollama available, so the structure was validated there with deterministic
+stub-LLM tests; once the Docker Compose stack was brought up by the user (and later a GPU
+became available too), the whole system was also tested **live, against real Ollama-backed
+models**. What actually ran:
 
-- **`pytest tests/` – 16/16 tests green.** `test_tools.py` tests the calculator math and
-  SQLite ticket read/write with real code; `test_rag_subgraph.py` tests the retrieve step
-  with a **real embedding model and a real FAISS index** (not mocked), while the
-  grading/rewrite/generate LLM steps use a deterministic, scripted stub LLM (this is purely
-  test infrastructure, not a user-facing mode); `test_graph_routing.py` exercises all 6
-  routing branches through the full main graph.
+- **`pytest tests/` – 16/16 tests green**, re-run after every prompt change as a regression
+  check. `test_tools.py` tests the calculator math and SQLite ticket read/write with real
+  code; `test_rag_subgraph.py` tests the retrieve step with a **real embedding model and a
+  real FAISS index** (not mocked), while the grading/rewrite/generate LLM steps use a
+  deterministic, scripted stub LLM (this is purely test infrastructure, not a user-facing
+  mode); `test_graph_routing.py` exercises all 6 routing branches through the full main
+  graph.
 - **`docker compose up --build`** actually ran and brought up both services
   (`policy-assistant-ollama`, `policy-assistant-app`); the Streamlit UI is live at
   `http://localhost:8501`.
 - **The full 16-question functional eval (`eval/run_eval.py`) and the 150-query load test
-  (`eval/load_test.py`) both actually ran against the real `llama3.2:3b` model** – see
-  sections 5 and 6 for the real numbers.
-- **Found and fixed two real bugs while testing against the live model:** (1)
-  `_CLASSIFY_PROMPT` contained a literal `"YYYY-MM-DD"` placeholder that `llama3.2:3b` echoed
-  back verbatim, causing the leave-balance calculator to fail on a plain policy question;
-  replaced it with a concrete sample date. (2) `_SYNTHESIZE_PROMPT` didn't explicitly forbid
-  inventing a source URL, so the model hallucinated a fake hyperlink for an internal filename
-  citation; fixed with an explicit instruction not to invent URLs.
+  (`eval/load_test.py`) both actually ran, twice** – once with `llama3.2:3b` on CPU, then
+  with `qwen2.5:14b` on GPU (RTX 5070 Ti) – see sections 5 and 6 for the real numbers. Both
+  report pairs (JSON+MD) are in the repo: the current `eval/results/*.md` is the Qwen/GPU
+  run, the `llama3.2:3b`/CPU run is archived under `eval/results/llama3.2-3b/`.
+- **Found and fixed two real bugs while testing against a live model, not just at design
+  time:** (1) `_CLASSIFY_PROMPT` contained a literal `"YYYY-MM-DD"` placeholder that
+  `llama3.2:3b` echoed back verbatim, which was replaced with a concrete sample date; (2)
+  `_SYNTHESIZE_PROMPT` didn't explicitly forbid inventing a source URL, which was also fixed;
+  (3) after the model switch, `qwen2.5:14b` classified an out-of-scope question (weather) as
+  `policy_question` for a while, until a concrete negative example was added to the prompt
+  (see 5.1). These three cases nicely demonstrate that with small/medium local LLMs, a prompt
+  can only really be reliably tested **against a real model, live** — the stub-LLM unit
+  tests protect the *routing structure*, not the *prompt quality*.
 
 ## 8. Known limitations / future improvements
 
@@ -304,3 +381,10 @@ live against a real Ollama-backed model (`llama3.2:3b`). What actually ran:
   `langchain-faiss` package or another vectorstore.
 - The load test runs against a single local Ollama process; measuring real horizontal
   scaling would require multiple model replicas.
+- `docker-compose.yml` requests a GPU reservation for the `ollama` service (see section 4) —
+  this errors out on build/startup on a host without an NVIDIA GPU + driver +
+  `nvidia-container-toolkit`/Docker Desktop GPU support; in that case, delete the
+  `deploy.resources` block and set `OLLAMA_MODEL` to a smaller CPU model (`llama3.2:3b`).
+- `_CLASSIFY_PROMPT` and `_SYNTHESIZE_PROMPT` have been tuned to a small degree in a
+  model-specific way (see sections 5.1, 7) — when switching to a third model, it's worth
+  re-running the full eval before considering anything production-ready.
