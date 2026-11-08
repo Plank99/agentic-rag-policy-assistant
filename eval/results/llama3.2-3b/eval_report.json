@@ -1,0 +1,203 @@
+{
+  "accuracy": 0.688,
+  "num_questions": 16,
+  "num_passed": 11,
+  "node_latency_ms": {
+    "calculate_leave": {
+      "count": 4,
+      "avg_ms": 0.0,
+      "max_ms": 0.0
+    },
+    "classify_intent": {
+      "count": 16,
+      "avg_ms": 2860.0,
+      "max_ms": 4375.6
+    },
+    "create_ticket": {
+      "count": 5,
+      "avg_ms": 13.2,
+      "max_ms": 23.2
+    },
+    "direct_response": {
+      "count": 1,
+      "avg_ms": 3893.8,
+      "max_ms": 3893.8
+    },
+    "rag.generate_answer": {
+      "count": 9,
+      "avg_ms": 3911.9,
+      "max_ms": 6424.5
+    },
+    "rag.grade_relevance": {
+      "count": 13,
+      "avg_ms": 3359.9,
+      "max_ms": 4535.1
+    },
+    "rag.retrieve": {
+      "count": 13,
+      "avg_ms": 10.0,
+      "max_ms": 15.0
+    },
+    "rag.rewrite_query": {
+      "count": 4,
+      "avg_ms": 2807.2,
+      "max_ms": 4065.1
+    },
+    "rag_answer": {
+      "count": 9,
+      "avg_ms": 10030.0,
+      "max_ms": 19861.9
+    },
+    "synthesize_response": {
+      "count": 15,
+      "avg_ms": 6640.2,
+      "max_ms": 12956.6
+    }
+  },
+  "rows": [
+    {
+      "id": "q1",
+      "type": "policy_question",
+      "query": "What are the password and MFA requirements for corporate accounts?",
+      "passed": true,
+      "detail": "keywords found=['12 characters', 'multi-factor', 'MFA'] (looked for ['12 characters', 'multi-factor', 'MFA'])",
+      "total_ms": 23633.3,
+      "final_answer": "Here's a clear and friendly answer to your question:\n\nFor corporate accounts, we have the following password and MFA requirements:\n\n* Password requirements: Passwords must be at least 12 characters long and include a mix of upper and lower case letters, digits, and symbols. (equipment_byod_policy.md)\n* Password rotation: Passwords must be rotated every 180 days, with no reuse for the previous 5 rotations. This means that after 5 consecutive logins, you'll need to change your password. (it_security_policy.md)\n* MFA (Multi-Factor Authentication) is not explicitly mentioned in the results, but it's likely that the company has a separate policy in place for MFA requirements. If you're unsure about MFA requirements, I recommend checking with the IT department or reviewing the company's security policy."
+    },
+    {
+      "id": "q2",
+      "type": "policy_question",
+      "query": "How many PTO days can I carry over into next year?",
+      "passed": true,
+      "detail": "keywords found=['5', 'carryover'] (looked for ['5', 'carryover'])",
+      "total_ms": 10734.3,
+      "final_answer": "Here's a clear and friendly answer for the employee:\n\n\"Hello! I'm happy to help you with your question about PTO carryover.\n\nAccording to our company policy, you can carry over up to 5 unused PTO days into the next year. This is outlined in our PTO policy (pto_policy.md). Please note that this is a general guideline and may be subject to change, so it's always a good idea to check with your manager or HR for any updates.\n\nIf you have any further questions or concerns, feel free to reach out to us. We're here to help!\""
+    },
+    {
+      "id": "q3",
+      "type": "policy_question",
+      "query": "How many days per week am I allowed to work remotely?",
+      "passed": true,
+      "detail": "keywords found=['3 days'] (looked for ['3 days'])",
+      "total_ms": 14018.5,
+      "final_answer": "Here's a clear and friendly answer for the employee who asked the original question:\n\n\"Hello! According to our company's remote work policy (remote_work_policy.md), you are allowed to work remotely up to 3 days per week, with the need for manager approval. If you have any questions or concerns about this policy, feel free to reach out to your manager or HR for more information.\""
+    },
+    {
+      "id": "q4",
+      "type": "policy_question",
+      "query": "Above what amount do I need a receipt for an expense?",
+      "passed": true,
+      "detail": "keywords found=['25 EUR'] (looked for ['25 EUR'])",
+      "total_ms": 15317.2,
+      "final_answer": "Hello!\n\nTo answer your question, the expense receipt threshold for reimbursement is 25 EUR. This means that if your expense is above this amount, you will need to provide a receipt to support your claim.\n\nPlease note that this policy is outlined in our expense reimbursement policy, which can be found in (expense_reimbursement_policy.md)."
+    },
+    {
+      "id": "q5",
+      "type": "policy_question",
+      "query": "Under GDPR, how quickly must the company respond to a data subject access request?",
+      "passed": false,
+      "detail": "keywords found=[] (looked for ['30 calendar days', '30 days'])",
+      "total_ms": 29044.8,
+      "final_answer": "Here's a clear and friendly answer for the employee who asked the original question:\n\n\"Regarding the GDPR data subject access request response time, I couldn't find a clear answer in our internal policy documents. I've escalated this question to a support ticket (TCK-C42D6E4E) so a human can review and provide a more accurate response. We'll keep you updated on the progress of this ticket.\""
+    },
+    {
+      "id": "q6",
+      "type": "policy_question",
+      "query": "What is the maximum value of a business gift I can accept according to the Code of Conduct?",
+      "passed": true,
+      "detail": "keywords found=['75 EUR'] (looked for ['75 EUR'])",
+      "total_ms": 21506.4,
+      "final_answer": "The maximum value of a business gift you can accept is 75 EUR, as stated in our company's Code of Conduct (code_of_conduct.md)."
+    },
+    {
+      "id": "q7",
+      "type": "leave_balance",
+      "query": "I was hired on 2022-01-01 and have taken 5 PTO days this year. How many days do I have left as of 2024-01-01?",
+      "passed": true,
+      "detail": "expected=37.0, actual=37.0",
+      "total_ms": 9226.6,
+      "final_answer": "Here's the answer to your question:\n\nAs of January 1st, 2024, you have 37 days of paid time off (PTO) remaining. You were hired on January 1st, 2022, and have already taken 5 days of PTO this year. Your leave balance is calculated as follows: you accrued 42 days of PTO, but have already taken 5 days, leaving you with 37 days remaining."
+    },
+    {
+      "id": "q8",
+      "type": "leave_balance",
+      "query": "My hire date is 2023-06-15 and I haven't taken any PTO yet. What's my balance as of 2023-12-15?",
+      "passed": true,
+      "detail": "expected=10.5, actual=10.5",
+      "total_ms": 8858.2,
+      "final_answer": "Based on your hire date of 2023-06-15, your leave balance as of 2023-12-15 is 10.5 days. This is calculated by adding the accrued leave days (10.5 days) to the remaining leave days (also 10.5 days), as you haven't taken any PTO yet."
+    },
+    {
+      "id": "q9",
+      "type": "leave_balance",
+      "query": "Hired 2020-02-01, took 20 PTO days already, what's my remaining balance as of 2020-08-01?",
+      "passed": true,
+      "detail": "expected=-9.5, actual=-9.5",
+      "total_ms": 10278.7,
+      "final_answer": "Here's the answer to your question:\n\nAs of August 1st, 2020, your remaining paid time off (PTO) balance is 9.5 days. You initially accrued 10.5 days of PTO, but you've already taken 20 days. To calculate your remaining balance, we subtract the days you've taken from your accrued balance: 10.5 - 20 = -9.5. Since you can't have a negative balance, this means you've actually used up more PTO than you accrued, leaving you with a negative balance."
+    },
+    {
+      "id": "q10",
+      "type": "create_ticket",
+      "query": "I lost my company laptop while traveling, please open a ticket for IT.",
+      "passed": false,
+      "detail": "expected_category=it_equipment_request, ticket={'ticket_id': 'TCK-0FFB58C1', 'category': 'it', 'summary': 'lost company laptop', 'priority': 'high', 'status': 'open', 'created_at': '2026-11-07T11:00:18.641861+00:00'}",
+      "total_ms": 6076.8,
+      "final_answer": "I've opened a support ticket for you, TCK-0FFB58C1, which is currently in the \"open\" status. This ticket will be categorized under \"IT\" and has a high priority. I'll make sure to keep you updated on the status of your laptop."
+    },
+    {
+      "id": "q11",
+      "type": "create_ticket",
+      "query": "I'd like to confidentially report a harassment concern about a coworker.",
+      "passed": false,
+      "detail": "expected_category=hr_conduct_concern, ticket={'ticket_id': 'TCK-FB844D6C', 'category': 'HR', 'summary': 'Confidential harassment concern', 'priority': 'high', 'status': 'open', 'created_at': '2026-11-07T11:00:24.736642+00:00'}",
+      "total_ms": 15425.0,
+      "final_answer": "I'm so sorry to hear that you're going through a difficult situation with a coworker. If you'd like to confidentially report a harassment concern, you can start by creating a support ticket with our HR department. You can do this by following these steps:\n\n1. Go to our internal support portal and log in with your credentials.\n2. Click on the \"New Ticket\" button and select the \"HR\" category.\n3. In the ticket description, explain the situation and provide as much detail as possible about what's been happening.\n4. Make sure to include any relevant dates, times, and locations.\n5. Once you've submitted the ticket, our HR team will review it and get back to you as soon as possible.\n\nYour support ticket has been created with the ID TCK-FB844D6C. Our HR team will be in touch with you shortly to discuss next steps. If you have any questions or concerns, feel free to reach out to them directly.\n\nPlease note that all reports of harassment will be taken seriously and handled confidentially. Our company takes all allegations of harassment very seriously and is committed to providing a safe and respectful work environment for all employees."
+    },
+    {
+      "id": "q12",
+      "type": "create_ticket",
+      "query": "I lost the receipt for a 150 EUR client dinner, please file an expense dispute ticket.",
+      "passed": false,
+      "detail": "expected_category=finance_expense_dispute, ticket={'ticket_id': 'TCK-FBAC7536', 'category': 'expense_dispute', 'summary': 'Lost receipt for client dinner', 'priority': 'low', 'status': 'open', 'created_at': '2026-11-07T11:00:40.949114+00:00'}",
+      "total_ms": 6461.2,
+      "final_answer": "I'm so sorry to hear that you lost the receipt for the 150 EUR client dinner. I've created a support ticket for you, which can be found here: TCK-FBAC7536 (expense_dispute, low priority, open status)."
+    },
+    {
+      "id": "q13",
+      "type": "compound",
+      "query": "What's the PTO carryover limit, and separately, I was hired on 2023-01-01 with 2 days taken - how many do I have left as of 2023-07-01?",
+      "passed": true,
+      "detail": "keywords found=['5', 'carryover']; expected=8.5, actual=8.5",
+      "total_ms": 12708.7,
+      "final_answer": "Here's the combined answer:\n\nHi there!\n\nI've got the answers to your questions for you.\n\nFirst, the PTO carryover limit is 5 unused PTO days, as stated in our company policies (pto_policy.md).\n\nNow, let's calculate your remaining PTO balance. You were hired on January 1st, 2023, and you took 2 days off initially. As of July 1st, 2023, you've accrued 10.5 days of PTO but have already taken 2 days, leaving you with 8.5 days remaining."
+    },
+    {
+      "id": "q14",
+      "type": "compound",
+      "query": "How do I report a security incident, and also please open a ticket requesting VPN access for a new contractor.",
+      "passed": false,
+      "detail": "keywords found=['1 hour']; expected_category=it_access_request, ticket={'ticket_id': 'TCK-21FA622B', 'category': 'security_incident', 'summary': 'reporting security incident', 'priority': 'high', 'status': 'open', 'created_at': '2026-11-07T11:01:00.432639+00:00'}",
+      "total_ms": 25870.6,
+      "final_answer": "Here's a clear and friendly answer for the employee who asked the original question:\n\nIf you've discovered a security incident, please report it to the Security Operations team immediately. You can do this by creating a support ticket with the following details:\n\n* Category: `it_security_incident`\n* Priority: `high`\n* Status: Open\n\nYou can also include any relevant information about the incident in the ticket. Once you've reported the incident, the Security Operations team will take care of it.\n\nAdditionally, if you need to request VPN access for a new contractor, you can open a support ticket with the following details:\n\n* Category: [Insert category, e.g. \"VPN Request\"]\n* Priority: [Insert priority, e.g. \"high\"]\n* Status: Open\n\nYou can also include any relevant information about the contractor and the reason for the VPN request in the ticket.\n\nPlease note that all support tickets should be created within 1 hour of discovery to ensure timely response from the Security Operations team."
+    },
+    {
+      "id": "q15",
+      "type": "out_of_scope",
+      "query": "What's the weather like today?",
+      "passed": true,
+      "detail": "routed to direct_response with no sub-task results, as expected",
+      "total_ms": 5273.6,
+      "final_answer": "\"Hello! I'm happy to help with any questions or concerns you have about our company policies, PTO balances, or opening a support ticket. Unfortunately, I'm not able to provide information on external weather conditions. Would you like to check your PTO balance or open a support ticket instead?\""
+    },
+    {
+      "id": "q16",
+      "type": "policy_question",
+      "query": "What's the overnight cap for that trip thing in the big cities?",
+      "passed": true,
+      "detail": "keywords found=['200 EUR'] (looked for ['200 EUR'])",
+      "total_ms": 25199.7,
+      "final_answer": "Here's a clear and friendly answer for the employee:\n\n\"Hi there, I've checked on the overnight cap for trips in big cities, but unfortunately, I couldn't find any specific information on a cap for overnight stays. However, I did find that there is a cap on lodging costs in major cities, which is 200 EUR/night. You can refer to our expense reimbursement policy (expense_reimbursement_policy.md) for more details on this. If you have any further questions or concerns, feel free to reach out to me or our HR team for assistance.\""
+    }
+  ]
+}

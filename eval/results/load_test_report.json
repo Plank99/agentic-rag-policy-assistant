@@ -1,0 +1,85 @@
+{
+  "overall": {
+    "n": 150,
+    "mean_ms": 10437.3,
+    "p50_ms": 9562.4,
+    "p90_ms": 15241.9,
+    "p99_ms": 23827.7,
+    "max_ms": 25392.5
+  },
+  "by_node": {
+    "calculate_leave": {
+      "n": 38,
+      "mean_ms": 0.0,
+      "p50_ms": 0.0,
+      "p90_ms": 0.0,
+      "share_of_total_pct": 0.0
+    },
+    "classify_intent": {
+      "n": 150,
+      "mean_ms": 2770.9,
+      "p50_ms": 3104.2,
+      "p90_ms": 3711.1,
+      "share_of_total_pct": 22.2
+    },
+    "create_ticket": {
+      "n": 45,
+      "mean_ms": 15.8,
+      "p50_ms": 12.5,
+      "p90_ms": 23.2,
+      "share_of_total_pct": 0.0
+    },
+    "direct_response": {
+      "n": 7,
+      "mean_ms": 3834.6,
+      "p50_ms": 3886.6,
+      "p90_ms": 4336.1,
+      "share_of_total_pct": 1.4
+    },
+    "rag.generate_answer": {
+      "n": 83,
+      "mean_ms": 1795.7,
+      "p50_ms": 1181.6,
+      "p90_ms": 4798.3,
+      "share_of_total_pct": 7.9
+    },
+    "rag.grade_relevance": {
+      "n": 113,
+      "mean_ms": 654.4,
+      "p50_ms": 394.7,
+      "p90_ms": 436.2,
+      "share_of_total_pct": 3.9
+    },
+    "rag.retrieve": {
+      "n": 113,
+      "mean_ms": 9.9,
+      "p50_ms": 9.0,
+      "p90_ms": 11.7,
+      "share_of_total_pct": 0.1
+    },
+    "rag.rewrite_query": {
+      "n": 30,
+      "mean_ms": 2860.6,
+      "p50_ms": 3064.8,
+      "p90_ms": 3358.4,
+      "share_of_total_pct": 4.6
+    },
+    "rag_answer": {
+      "n": 83,
+      "mean_ms": 3736.7,
+      "p50_ms": 1672.4,
+      "p90_ms": 6860.0,
+      "share_of_total_pct": 16.5
+    },
+    "synthesize_response": {
+      "n": 143,
+      "mean_ms": 5677.7,
+      "p50_ms": 5551.1,
+      "p90_ms": 8711.7,
+      "share_of_total_pct": 43.3
+    }
+  },
+  "bottleneck_node": "synthesize_response",
+  "wall_clock_s": 1565.6,
+  "workers": 1
+}

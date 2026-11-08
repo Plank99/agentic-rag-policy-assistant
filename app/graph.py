@@ -39,9 +39,12 @@ _ROUTE_TARGETS = {node: node for node in set(TASK_NODE_MAP.values()) | {"synthes
 
 _CLASSIFY_PROMPT = """You are the routing brain of an internal company-policy assistant. \
 Decompose the user's message into an ORDERED list of task types drawn from:
-  - "policy_question": needs to look up something in internal HR/IT/Finance/Legal policy docs
-  - "leave_balance": needs to calculate remaining PTO/vacation balance (requires hire_date \
-and days_taken)
+  - "policy_question": needs to look up a RULE or GENERAL FACT in internal HR/IT/Finance/Legal \
+policy docs (e.g. "how many days can I carry over", "what's the password policy")
+  - "leave_balance": the user gave a SPECIFIC hire date AND a specific number of days already \
+taken, and wants their own remaining balance computed. Do NOT use this for general questions \
+about the PTO policy/rules - only when the message itself states a real hire date and a real \
+days-taken number.
   - "create_ticket": the user explicitly wants to open a support/HR/IT ticket
 
 If the message is a greeting, small talk, or unrelated to company policy/HR/IT, return an \
@@ -49,13 +52,17 @@ empty task list.
 
 Respond with ONLY a JSON object of this shape:
 {{
-  "tasks": ["policy_question", "leave_balance"],
+  "tasks": ["policy_question"],
   "rag_query": "self-contained question to search policy docs for, or empty string",
-  "calc_args": {{"hire_date": "YYYY-MM-DD", "days_taken": 0, "as_of_date": "YYYY-MM-DD or omit"}},
+  "calc_args": {{"hire_date": "2022-03-10", "days_taken": 4, "as_of_date": "2024-03-10"}},
   "ticket_args": {{"category": "short_snake_case_category", "summary": "...", "priority": "low|normal|high"}}
 }}
-Only include calc_args if "leave_balance" is in tasks, and only include ticket_args if \
-"create_ticket" is in tasks. A single message can contain multiple tasks.
+Only include "calc_args" at all if "leave_balance" is in tasks AND the message gave a real \
+hire date and days-taken number (use those exact values, never placeholders). Only include \
+"ticket_args" if "create_ticket" is in tasks. A single message can contain multiple tasks.
+
+Example - pure policy question, no personal dates given: \
+{{"tasks": ["policy_question"], "rag_query": "PTO carryover limit"}}
 
 User message: {query}
 """
@@ -68,9 +75,10 @@ with that and suggest what you *can* help with.
 """
 
 _SYNTHESIZE_PROMPT = """Combine the following internal results into ONE clear, friendly \
-answer for the employee who asked the original question below. Preserve any source \
-document names and ticket IDs mentioned in the results. Do not invent facts that are not \
-in the results.
+answer for the employee who asked the original question below. When citing a policy, \
+mention the source filename in parentheses exactly as given, e.g. "(pto_policy.md)" - do \
+NOT invent a URL or hyperlink for it, these are internal filenames only. Preserve any \
+ticket IDs mentioned in the results. Do not invent facts that are not in the results.
 
 Original question: {query}
 
