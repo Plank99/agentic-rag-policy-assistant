@@ -79,8 +79,9 @@ retrieve → grade_relevance ──relevant──→ generate_answer → (end)
               └──not relevant & retries exhausted──→ generate_answer (confidence="low")
 ```
 
-1. **`retrieve`** – FAISS similarity search (`k=4`) using the local `all-MiniLM-L6-v2`
-   embedding model.
+1. **`retrieve`** – FAISS similarity search (`k=4`) using the local
+   `paraphrase-multilingual-MiniLM-L12-v2` embedding model (multilingual, so non-English
+   questions still retrieve reasonably against the English policy corpus).
 2. **`grade_relevance`** – the LLM decides whether the retrieved snippets are sufficient.
 3. **`rewrite_query`** – if not, the LLM rewrites the question (e.g. resolves pronouns like
    "this"/"that", sharpens keywords), and returns to `retrieve` — at most 2 times.
@@ -143,7 +144,7 @@ documents, and a "Rebuild index" button that clears the cached graph/store and f
 | Component | Choice | Rationale |
 |---|---|---|
 | LLM | **Ollama runtime + `qwen2.5:14b`** (configurable via `OLLAMA_MODEL` env var) | No paid API; Ollama is just the local model server, so the actual model can be swapped via env var at any time, with no code change. The project originally started with `llama3.2:3b` (smaller, fast even on CPU), then switched to `qwen2.5:14b` once a GPU became available (RTX 5070 Ti, 16 GB VRAM) — see the `deploy.resources.reservations.devices` (NVIDIA GPU) block on the `ollama` service in `docker-compose.yml`. **The real functional eval and load test were run against both models** (see sections 5-6) — the GPU-backed Qwen gave not only better quality but also roughly a **4.3× latency improvement**. The trade-off that persisted across both models: smaller/mid-size LLMs are less reliable at strictly following a JSON format → so `app/llm.py` defensively parses the JSON response (extracts the first `{...}` block via regex, falls back to a sensible default on any missing/invalid field). |
-| Embedding | **`sentence-transformers/all-MiniLM-L6-v2`** (local, runs on CPU) | Small (~90 MB), fast, no API key, good enough retrieval quality for a corpus of this size. |
+| Embedding | **`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`** (local, runs on CPU) | Small (~470 MB), no API key, and multilingual (50+ languages) so retrieval still works reasonably when an employee asks in a language other than English, even though the policy corpus itself is English-only. The vectorstore cache key includes the embedding model name, so switching models (e.g. back to the smaller English-only `all-MiniLM-L6-v2`) auto-rebuilds the index instead of silently reusing incompatible vectors. |
 | Vectorstore | **FAISS** (in-process, persisted to disk) | No separate infrastructure needed for a prototype; see the 2.4 scalability note. |
 
 ## 4. Installation and running
