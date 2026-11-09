@@ -15,7 +15,7 @@ import time
 from langgraph.graph import END, StateGraph
 
 from app.config import RAG_MAX_REWRITES, RAG_TOP_K
-from app.llm import structured_json_call
+from app.llm import PROMPT_INJECTION_GUARD, structured_json_call, wrap_user_input
 from app.rag.vectorstore import similarity_search
 from app.state import RagState
 from app.tracing import trace_step as _trace
@@ -35,7 +35,8 @@ def build_rag_subgraph(llm, store, top_k: int = RAG_TOP_K, max_rewrites: int = R
         prompt = (
             "You are grading whether retrieved document snippets are sufficient to answer a "
             "user question. Respond with ONLY a JSON object: {\"relevant\": true or false}.\n\n"
-            f"Question: {state['query']}\n\nSnippets:\n{snippets}\n"
+            f"{PROMPT_INJECTION_GUARD}\n\n"
+            f"Question:\n{wrap_user_input(state['query'])}\n\nSnippets:\n{snippets}\n"
         )
         result = structured_json_call(llm, prompt, default={"relevant": bool(state["docs"])})
         relevant = bool(result.get("relevant", False))
@@ -50,7 +51,8 @@ def build_rag_subgraph(llm, store, top_k: int = RAG_TOP_K, max_rewrites: int = R
             "search over internal company policy documents (resolve pronouns, expand "
             "abbreviations, add likely policy keywords). Respond with ONLY a JSON object: "
             '{"rewritten_query": "..."}.\n\n'
-            f"Original question: {state['query']}\n"
+            f"{PROMPT_INJECTION_GUARD}\n\n"
+            f"Original question:\n{wrap_user_input(state['query'])}\n"
         )
         result = structured_json_call(llm, prompt, default={"rewritten_query": state["query"]})
         new_query = result.get("rewritten_query") or state["query"]
@@ -71,7 +73,8 @@ def build_rag_subgraph(llm, store, top_k: int = RAG_TOP_K, max_rewrites: int = R
                 "Answer the user's question using ONLY the information in the snippets below. "
                 "Cite the source filename(s) you used in parentheses. If the snippets truly do "
                 "not contain the answer, say so plainly.\n\n"
-                f"Question: {state['original_query']}\n\nSnippets:\n{snippets}\n"
+                f"{PROMPT_INJECTION_GUARD}\n\n"
+                f"Question:\n{wrap_user_input(state['original_query'])}\n\nSnippets:\n{snippets}\n"
             )
             response = llm.invoke(prompt)
             answer = response.content if hasattr(response, "content") else str(response)
