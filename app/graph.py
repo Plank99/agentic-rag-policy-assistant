@@ -47,8 +47,10 @@ about the PTO policy/rules - only when the message itself states a real hire dat
 days-taken number.
   - "create_ticket": the user explicitly wants to open a support/HR/IT ticket
 
-If the message is a greeting, small talk, or unrelated to company policy/HR/IT, return an \
-empty task list.
+If the message is a greeting, small talk, or unrelated to company policy/HR/IT (e.g. weather, \
+jokes, general trivia, anything with no plausible connection to an internal company policy \
+document), return an empty task list. Do NOT force-fit an unrelated question into \
+"policy_question" just because some policy document uses similar words.
 
 Respond with ONLY a JSON object of this shape:
 {{
@@ -63,6 +65,9 @@ hire date and days-taken number (use those exact values, never placeholders). On
 
 Example - pure policy question, no personal dates given: \
 {{"tasks": ["policy_question"], "rag_query": "PTO carryover limit"}}
+
+Example - unrelated small talk, must NOT be routed anywhere: \
+{{"tasks": []}}  (for a message like "What's the weather like today?" or "tell me a joke")
 
 User message: {query}
 """

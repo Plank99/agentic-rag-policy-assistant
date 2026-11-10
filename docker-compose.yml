@@ -7,6 +7,13 @@ services:
     volumes:
       - ollama_models:/root/.ollama
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   app:
     build: .
@@ -14,7 +21,7 @@ services:
     depends_on:
       - ollama
     environment:
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:14b}
       OLLAMA_BASE_URL: http://ollama:11434
     ports:
       - "8501:8501"
