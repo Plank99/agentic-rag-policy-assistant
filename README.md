@@ -114,6 +114,30 @@ Equipment/BYOD, Travel. The emphasis is on quality of processing:
   a larger corpus, switching to a managed vector DB (pgvector, Pinecone, etc.) only touches
   this file — the ingestion/subgraph code stays unchanged.
 
+### 2.5 UI (`ui/streamlit_app.py`)
+
+A Streamlit chat front-end over the graph from 2.1 — not just a chat box, but a window into
+the agent's internals, since the whole point of the project is to make the decomposition/
+routing/escalation behavior inspectable:
+
+- **Agent trace** – each turn's reply is followed by an expandable `Agent trace (N steps)`
+  panel that lists every node the graph actually visited for that query, in order, with its
+  short decision description and `duration_ms` (the same `trace` entries accumulated in
+  `AgentState`, see 2.1) — e.g. seeing `rag.rewrite_query` appear makes the self-correction
+  loop from 2.2 directly visible instead of just the final answer.
+- **RAG source display** – when a `policy_question` subtask ran, a second expander
+  (`RAG sources (confidence: ...)`) lists the source documents backing the answer, and
+  surfaces the subgraph's own confidence label (`high`/`low`) — so a `confidence="low"`
+  answer is visibly flagged, not just silently escalated.
+- **Ticket-ID highlighting** – if a `create_ticket` subtask ran (user-requested or
+  auto-escalated), the ticket ID, category, and priority are pulled out of the result and
+  shown in a highlighted `st.info` callout (🎫) rather than buried in the chat text, and an
+  auto-escalation additionally surfaces a `st.warning` with the escalation reason.
+
+The sidebar separately shows the active `OLLAMA_MODEL`/`OLLAMA_BASE_URL`, the indexed policy
+documents, and a "Rebuild index" button that clears the cached graph/store and forces
+`load_or_build_index(force_rebuild=True)` on rerun.
+
 ## 3. Model choice and trade-offs
 
 | Component | Choice | Rationale |
