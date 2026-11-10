@@ -5,8 +5,6 @@ venv/
 .venv/
 app/data/index/
 app/data/tickets.db
-eval/results/*.json
-eval/results/*.md
 .pytest_cache/
 .streamlit/
 *.egg-info/

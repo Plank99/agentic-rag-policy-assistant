@@ -175,11 +175,45 @@ grades them: keyword match (policy answers), numeric tolerance (calculator), cat
 (tickets), route match (out-of-scope). Output: `eval/results/eval_report.{md,json}`, with
 per-node average/max latency.
 
+**Real result (`llama3.2:3b`, Docker Compose stack, 2026-11-07): 11/16 (68.8%).**
+
+| node | count | avg_ms | max_ms |
+|---|---|---|---|
+| classify_intent | 16 | 2860.0 | 4375.6 |
+| rag.retrieve | 13 | 10.0 | 15.0 |
+| rag.grade_relevance | 13 | 3359.9 | 4535.1 |
+| rag.rewrite_query | 4 | 2807.2 | 4065.1 |
+| rag.generate_answer | 9 | 3911.9 | 6424.5 |
+| rag_answer | 9 | 10030.0 | 19861.9 |
+| calculate_leave | 4 | 0.0 | 0.0 |
+| create_ticket | 5 | 13.2 | 23.2 |
+| direct_response | 1 | 3893.8 | 3893.8 |
+| synthesize_response | 15 | 6640.2 | 12956.6 |
+
+5 questions failed, for two very different reasons:
+
+- **q5 (real failure):** "Under GDPR, how quickly must the company respond to a data
+  subject access request?" – the model didn't reproduce the exact "30 calendar days" fact in
+  its answer, even though `data_protection_policy.md` contains it. This is a genuine
+  small-model quality limitation (the generated answer came out too generic), not a routing
+  or retrieval failure — the correct document was retrieved into the top-k.
+- **q10, q11, q12, q14 (grading too strict, not an agent failure):** in all 4 cases the
+  ticket was **created correctly**, with the right `summary`/`priority` fields (e.g. q10:
+  `{"category": "it", "summary": "lost company laptop", "priority": "high"}`), but the
+  `category` field didn't literally match the expected string recorded in
+  `eval_questions.json` (`"it_equipment_request"`). `_CLASSIFY_PROMPT` deliberately asks the
+  model for a free-form `snake_case` category (no fixed enum), so the model returns its own,
+  reasonable category name (`"it"`, `"HR"`, `"expense_dispute"`, `"security_incident"`) —
+  which is functionally correct, just not accepted by exact-match grading. **Lesson:** in a
+  production version, the category should either be constrained to a closed enum in the
+  classify prompt, or the grading should be keyword-/synonym-based instead of exact match.
+
 **Methodological limitation (deliberately documented):** the evaluation uses simple,
-deterministic checks (keyword containment, numeric tolerance), *not* an LLM-as-judge — this
-is 100% reproducible, but does not catch every possible phrasing of a correct answer, and may
-miss subtle factual errors. In a production version it would be worth adding a second,
-LLM-based "judge" step for the keyword-based questions.
+deterministic checks (keyword containment, numeric tolerance, exact-match category), *not*
+an LLM-as-judge — this is 100% reproducible, but — as the q10-q12/q14 cases above show — it
+can sometimes produce a false negative on a functionally correct answer. In a production
+version it would be worth adding a second, LLM-based "judge" step for the keyword/category
+questions.
 
 ## 6. Load test
 
@@ -193,13 +227,35 @@ leave_balance, ≈20% ticket, ≈10% out-of-scope/compound) using repeated, gene
 and writes the mean/p50/p90/p99 latency — both overall and **broken down per node** — plus
 the identified bottleneck into `eval/results/load_test_report.{md,json}`.
 
-**Expected result / bottleneck analysis** (see also the report's generated
-`OPTIMIZATION_NOTES` section): the nodes expected to dominate are the LLM-calling ones —
-`classify_intent`, `rag.grade_relevance`, `rag.rewrite_query`, `rag.generate_answer`,
-`synthesize_response` — since each one is a synchronous Ollama round-trip, and a single
-policy question can trigger 3-5 of these calls in sequence. `retrieve` (FAISS) and the
-deterministic tools (`calculate_leave`, `create_ticket`) are negligible in cost by comparison
-(a couple of milliseconds).
+**Real result (`llama3.2:3b`, Docker Compose stack, 150 queries, 1 worker, total wall clock
+1565.6s ≈ 26 min):**
+
+| mean | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| 10437.3 ms | 9562.4 ms | 15241.9 ms | 23827.7 ms | 25392.5 ms |
+
+| node | n | mean_ms | p90_ms | share of total |
+|---|---|---|---|---|
+| synthesize_response | 143 | 5677.7 | 8711.7 | **43.3%** |
+| classify_intent | 150 | 2770.9 | 3711.1 | 22.2% |
+| rag_answer | 83 | 3736.7 | 6860.0 | 16.5% |
+| rag.generate_answer | 83 | 1795.7 | 4798.3 | 7.9% |
+| rag.rewrite_query | 30 | 2860.6 | 3358.4 | 4.6% |
+| rag.grade_relevance | 113 | 654.4 | 436.2 | 3.9% |
+| direct_response | 7 | 3834.6 | 4336.1 | 1.4% |
+| create_ticket | 45 | 15.8 | 23.2 | ~0.0% |
+| rag.retrieve | 113 | 9.9 | 11.7 | ~0.0% |
+| calculate_leave | 38 | 0.0 | 0.0 | 0.0% |
+
+**Identified bottleneck node: `synthesize_response`** (the report script flags this
+automatically) – this is a single, relatively long-context LLM call that runs at the end of
+almost every request (143/150 runs), so in aggregate it dominates nearly half of the total
+time, more than `classify_intent` or the sum of the several smaller calls in the RAG chain.
+This confirms the original hypothesis (synchronous LLM round-trips dominate), just not where
+we'd expect at first — it's not the longest call chain (the RAG rewrite loop) that is most
+expensive, but the single, large-context call that stitches all sub-results together at the
+end. `retrieve` (FAISS) and the deterministic tools (`calculate_leave`, `create_ticket`) are,
+as expected, negligible in cost (a couple of milliseconds).
 
 **Two concrete optimization suggestions:**
 1. **Collapse LLM round-trips.** `grade_relevance` + `rewrite_query` can be merged into a
@@ -212,33 +268,31 @@ deterministic tools (`calculate_leave`, `create_ticket`) are negligible in cost 
    needs more than one Ollama replica or a GPU, since a single local Ollama process
    serializes requests regardless of how many client threads call it.
 
-## 7. What I actually tested, and this sandbox's limitation
+## 7. What I actually tested
 
-This development environment has **no installed Ollama / downloaded local LLM**, so I was
-not able to run the full, real-LLM-driven `run_eval.py`/`load_test.py` live, and I'm not
-stating any concrete numbers for their results.
-
-What I actually ran and verified:
+This sandbox did not have Docker or a local Ollama model available while the graph/RAG/tool
+logic was first being built, so the structure was initially validated with deterministic
+stub-LLM tests. Once the user brought up the Docker Compose stack, the system was tested
+live against a real Ollama-backed model (`llama3.2:3b`). What actually ran:
 
 - **`pytest tests/` – 16/16 tests green.** `test_tools.py` tests the calculator math and
   SQLite ticket read/write with real code; `test_rag_subgraph.py` tests the retrieve step
   with a **real embedding model and a real FAISS index** (not mocked), while the
   grading/rewrite/generate LLM steps use a deterministic, scripted stub LLM (this is purely
   test infrastructure, not a user-facing mode); `test_graph_routing.py` exercises all 6
-  routing branches (policy/calc/ticket/compound/out-of-scope/auto-escalation) through the
-  full main graph, and checks the correctness of `trace`/`pending_tasks`/`results`.
-- I also ran a real FAISS index build and search over the actual 8 policy documents (see
-  `scripts/build_index.py`) with real `sentence-transformers` embeddings – this works, the
-  relevant document comes back as the top hit.
-- I started the Streamlit UI (`streamlit run`), and it returns HTTP 200 with no error – but I
-  could not try the actual chat interaction (which requires Ollama) in a browser.
-- I **could not build** the Dockerfile in this sandbox (the Docker daemon isn't running here)
-  – I reviewed it manually for correctness, but the actual `docker compose up --build` run
-  needs to be done by the user.
-
-**Suggestion:** after `docker compose up --build -d && docker exec policy-assistant-ollama ollama pull llama3.2:3b`,
-run `python -m eval.run_eval` and `python -m eval.load_test`, and check the
-`eval/results/*.md` reports for the real numbers.
+  routing branches through the full main graph.
+- **`docker compose up --build`** actually ran and brought up both services
+  (`policy-assistant-ollama`, `policy-assistant-app`); the Streamlit UI is live at
+  `http://localhost:8501`.
+- **The full 16-question functional eval (`eval/run_eval.py`) and the 150-query load test
+  (`eval/load_test.py`) both actually ran against the real `llama3.2:3b` model** – see
+  sections 5 and 6 for the real numbers.
+- **Found and fixed two real bugs while testing against the live model:** (1)
+  `_CLASSIFY_PROMPT` contained a literal `"YYYY-MM-DD"` placeholder that `llama3.2:3b` echoed
+  back verbatim, causing the leave-balance calculator to fail on a plain policy question;
+  replaced it with a concrete sample date. (2) `_SYNTHESIZE_PROMPT` didn't explicitly forbid
+  inventing a source URL, so the model hallucinated a fake hyperlink for an internal filename
+  citation; fixed with an explicit instruction not to invent URLs.
 
 ## 8. Known limitations / future improvements
 
