@@ -1,0 +1,27 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: policy-assistant-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: policy-assistant-app
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "8501:8501"
+    volumes:
+      - app_data:/app/app/data
+    restart: unless-stopped
+
+volumes:
+  ollama_models:
+  app_data:
