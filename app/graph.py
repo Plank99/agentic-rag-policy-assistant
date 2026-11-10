@@ -21,7 +21,7 @@ import time
 
 from langgraph.graph import END, StateGraph
 
-from app.llm import get_chat_llm, structured_json_call
+from app.llm import PROMPT_INJECTION_GUARD, get_chat_llm, structured_json_call, wrap_user_input
 from app.rag.subgraph import build_rag_subgraph, run_rag
 from app.rag.vectorstore import load_or_build_index
 from app.state import AgentState
@@ -69,14 +69,21 @@ Example - pure policy question, no personal dates given: \
 Example - unrelated small talk, must NOT be routed anywhere: \
 {{"tasks": []}}  (for a message like "What's the weather like today?" or "tell me a joke")
 
-User message: {query}
+{guard}
+
+User message:
+{query}
 """
 
-_DIRECT_RESPONSE_PROMPT = """The user said: {query!r}
-This assistant only answers questions about internal company policy (HR, IT, Finance, \
-Legal), calculates PTO/vacation balances, and opens support tickets. Reply briefly (1-3 \
-sentences) and politely: greet back if it's a greeting, otherwise explain you can't help \
-with that and suggest what you *can* help with.
+_DIRECT_RESPONSE_PROMPT = """This assistant only answers questions about internal company \
+policy (HR, IT, Finance, Legal), calculates PTO/vacation balances, and opens support \
+tickets. Reply briefly (1-3 sentences) and politely: greet back if it's a greeting, \
+otherwise explain you can't help with that and suggest what you *can* help with.
+
+{guard}
+
+The user said:
+{query}
 """
 
 _SYNTHESIZE_PROMPT = """Combine the following internal results into ONE clear, friendly \
@@ -85,7 +92,10 @@ mention the source filename in parentheses exactly as given, e.g. "(pto_policy.m
 NOT invent a URL or hyperlink for it, these are internal filenames only. Preserve any \
 ticket IDs mentioned in the results. Do not invent facts that are not in the results.
 
-Original question: {query}
+{guard}
+
+Original question:
+{query}
 
 Results:
 {context}
@@ -101,7 +111,10 @@ def _classify_intent(llm):
             "calc_args": {},
             "ticket_args": {},
         }
-        result = structured_json_call(llm, _CLASSIFY_PROMPT.format(query=state["user_query"]), default)
+        prompt = _CLASSIFY_PROMPT.format(
+            guard=PROMPT_INJECTION_GUARD, query=wrap_user_input(state["user_query"])
+        )
+        result = structured_json_call(llm, prompt, default)
         tasks = [t for t in result.get("tasks", []) if t in TASK_NODE_MAP]
         update = {
             "pending_tasks": tasks,
@@ -120,7 +133,10 @@ def _classify_intent(llm):
 def _direct_response(llm):
     def node(state: AgentState) -> dict:
         start = time.time()
-        response = llm.invoke(_DIRECT_RESPONSE_PROMPT.format(query=state["user_query"]))
+        prompt = _DIRECT_RESPONSE_PROMPT.format(
+            guard=PROMPT_INJECTION_GUARD, query=wrap_user_input(state["user_query"])
+        )
+        response = llm.invoke(prompt)
         answer = response.content if hasattr(response, "content") else str(response)
         update = {"final_answer": answer}
         update.update(_trace(state, "direct_response", "out-of-scope / greeting", start))
@@ -244,7 +260,11 @@ def _synthesize_response(llm):
         context = "\n\n".join(parts) if parts else "No sub-task results were produced."
 
         response = llm.invoke(
-            _SYNTHESIZE_PROMPT.format(query=state["user_query"], context=context)
+            _SYNTHESIZE_PROMPT.format(
+                guard=PROMPT_INJECTION_GUARD,
+                query=wrap_user_input(state["user_query"]),
+                context=context,
+            )
         )
         answer = response.content if hasattr(response, "content") else str(response)
         update = {"final_answer": answer}
