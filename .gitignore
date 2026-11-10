@@ -6,5 +6,5 @@ venv/
 app/data/index/
 app/data/tickets.db
 .pytest_cache/
-.streamlit/
+.streamlit/secrets.toml
 *.egg-info/
