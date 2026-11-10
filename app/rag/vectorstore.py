@@ -46,11 +46,15 @@ def load_or_build_index(
     """Load a cached FAISS index from disk, rebuilding it if the corpus changed."""
     from langchain_community.vectorstores import FAISS
 
+    from app.config import EMBEDDING_MODEL
+
     docs_dir = Path(docs_dir)
     index_dir = Path(index_dir)
     embeddings = get_embeddings()
     fingerprint_path = index_dir / _FINGERPRINT_FILE
-    current_fingerprint = corpus_fingerprint(docs_dir)
+    # Include the embedding model name so switching models invalidates the cache instead of
+    # silently loading vectors built by a different model (same FAISS dimension can mask this).
+    current_fingerprint = f"{corpus_fingerprint(docs_dir)}::{EMBEDDING_MODEL}"
 
     index_is_fresh = (
         not force_rebuild

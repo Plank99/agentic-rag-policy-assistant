@@ -13,7 +13,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
 
 POLICY_DOCS_DIR = Path(os.getenv("POLICY_DOCS_DIR", PROJECT_ROOT / "app" / "data" / "policies"))
 INDEX_DIR = Path(os.getenv("INDEX_DIR", PROJECT_ROOT / "app" / "data" / "index"))
